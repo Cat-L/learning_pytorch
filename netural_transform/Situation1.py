@@ -152,7 +152,7 @@ imshow(content_img, title='Content Image')
 plt.subplot(1, 3, 3)
 imshow(input_img, title='Output Image')
 
-
+img.show()
 # In[ ]:
 
 

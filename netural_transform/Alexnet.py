@@ -6,7 +6,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 
 LR=0.001
-BATCH_SIZE=512 #大概需要2G的显存
+BATCH_SIZE=256 #大概需要2G的显存
 EPOCHS=100 # 总共训练批次
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -15,7 +15,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 train_loader = torch.utils.data.DataLoader(
         datasets.MNIST('data', train=True, download=True,
                        transform=transforms.Compose([
-                           transforms.Resize(224*224),
+                           transforms.Scale((224, 224), 2),
                            transforms.ToTensor(),
                            transforms.Normalize((0.1307,), (0.3081,))
                        ])),
@@ -28,9 +28,10 @@ test_loader = torch.utils.data.DataLoader(
                            transforms.Normalize((0.1307,), (0.3081,))
                        ])),
         batch_size=BATCH_SIZE, shuffle=True)
-
+#
 # for i,data in enumerate(train_loader):
 #     print(data[0].size())
+#     break
 # 你会发现图像的形状torch.Size([512,1,28,28])，这表明每个batch中有512个图像，每个图像的尺寸为28 x 28像素。同样，标签的形状为torch.Size([512])，512张图像分别对应有512个标签。
 
 
@@ -45,10 +46,11 @@ class Alexnet(nn.Module):
                 in_channels=1,     # conv out size 216
                 out_channels=64,
                 kernel_size=11,
-                padding=1
+                padding=2,
+                stride=4
             ),
             nn.ReLU(),
-            nn.MaxPool2d(3)       # maxpool output size 71
+            nn.MaxPool2d(3,2)       # maxpool output size 71
             #todo if input size could not be divisible, how would it do?
             )
         self.conv2=nn.Sequential( #Second Layer
@@ -56,10 +58,11 @@ class Alexnet(nn.Module):
                 in_channels=64,   #conv out size  69
                 out_channels=192,
                 kernel_size=5,
-                padding=1
+                stride=1,
+                padding=2
             ),
             nn.ReLU(),
-            nn.MaxPool2d(3)       # maxpool output size
+            nn.MaxPool2d(3,2)       # maxpool output size
         )
         self.conv3=nn.Sequential( #Third Layer
 
@@ -73,6 +76,7 @@ class Alexnet(nn.Module):
                 in_channels=384,  #conv out size  23
                 out_channels=256,
                 kernel_size=3,
+                stride=1,
                 padding=1
 
             ),
@@ -82,31 +86,33 @@ class Alexnet(nn.Module):
                 kernel_size=3,
                 padding=1
             ),
-            nn.MaxPool2d(3)       # maxpool output size 6
+            nn.AdaptiveAvgPool2d((6, 6))       # maxpool output size 6
         )
         self.classifier=nn.Sequential(
-            nn.Dropout(),
-            # TODO Liear could not match the out of last conv
-            nn.Linear(256 * 6 * 6, 4096),
+            nn.Linear(9216, 4096),
             nn.ReLU(inplace=True),
             nn.Dropout(),
             nn.Linear(4096, 4096),
             nn.ReLU(inplace=True),
+            nn.Dropout(),
             nn.Linear(4096, 10),
         )
 
     def forward(self,x):
-        print("input",x.size())
+        # print("input",x.size())
         x=self.conv1(x)
-        print("conv1 out ",x.size())
+        # print("conv1 out ",x.size())
         x=self.conv2(x)
-        print("conv2 out",x.size())
+        # print("conv2 out",x.size())
         x=self.conv3(x)
-        # x=x.view(x.size(0),-1)
+        # print("conv3 out", x.size())
+        x=x.view(x.size(0),-1)
         out=self.classifier(x)
         return out
 
 alexnet=Alexnet().to(DEVICE)
+
+
 
 optimizer=torch.optim.Adam(alexnet.parameters(),LR)
 loss_func=nn.CrossEntropyLoss()
