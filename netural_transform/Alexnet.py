@@ -15,6 +15,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 train_loader = torch.utils.data.DataLoader(
         datasets.MNIST('data', train=True, download=True,
                        transform=transforms.Compose([
+                           transforms.Resize(224*224),
                            transforms.ToTensor(),
                            transforms.Normalize((0.1307,), (0.3081,))
                        ])),
@@ -22,6 +23,7 @@ train_loader = torch.utils.data.DataLoader(
 
 test_loader = torch.utils.data.DataLoader(
         datasets.MNIST('data', train=False, transform=transforms.Compose([
+                           transforms.Resize(224*224),
                            transforms.ToTensor(),
                            transforms.Normalize((0.1307,), (0.3081,))
                        ])),
@@ -33,58 +35,59 @@ test_loader = torch.utils.data.DataLoader(
 
 
 
-#  input size =28*28*1
+#  input size =224*224*1
 class Alexnet(nn.Module):
 
     def __init__(self):
         super(Alexnet,self).__init__()
         self.conv1=nn.Sequential(  # First Layer
             nn.Conv2d(             # conv(1,64,11) -> Relu -> maxpool(3*3)
-                in_channels=1,     # conv out size 18*18
+                in_channels=1,     # conv out size 216
                 out_channels=64,
                 kernel_size=11,
                 padding=1
             ),
             nn.ReLU(),
-            nn.MaxPool2d(3)       # maxpool output size 16*16
+            nn.MaxPool2d(3)       # maxpool output size 71
             #todo if input size could not be divisible, how would it do?
             )
         self.conv2=nn.Sequential( #Second Layer
             nn.Conv2d(            #conv(64,192,5) -> Relu -> maxpool(3*3)
-                in_channels=64,   #conv out size 16*16
+                in_channels=64,   #conv out size  69
                 out_channels=192,
                 kernel_size=5,
                 padding=1
             ),
             nn.ReLU(),
-            nn.MaxPool2d(3)       # maxpool output size 14*14
+            nn.MaxPool2d(3)       # maxpool output size
         )
         self.conv3=nn.Sequential( #Third Layer
 
             nn.Conv2d(            #conv(192,384,3) -> conv(384,256,3) ->conv(256,265,3)
-                in_channels=192,  #conv out size 14*14
+                in_channels=192,  #conv out size  23
                 out_channels=384,
                 kernel_size=3,
                 padding=1
             ),
             nn.Conv2d(
-                in_channels=384,  #conv out size 14*14
+                in_channels=384,  #conv out size  23
                 out_channels=256,
                 kernel_size=3,
                 padding=1
 
             ),
             nn.Conv2d(
-                in_channels=256,  #conv out size 14*14
+                in_channels=256,  #conv out size  23
                 out_channels=256,
                 kernel_size=3,
                 padding=1
             ),
-            nn.MaxPool2d(3)       # maxpool output size 12*12
+            nn.MaxPool2d(3)       # maxpool output size 6
         )
         self.classifier=nn.Sequential(
             nn.Dropout(),
-            nn.Linear(256 * 12 * 12, 4096),
+            # TODO Liear could not match the out of last conv
+            nn.Linear(256 * 6 * 6, 4096),
             nn.ReLU(inplace=True),
             nn.Dropout(),
             nn.Linear(4096, 4096),
